@@ -16,15 +16,29 @@ const src = join(here, "entry.png");
 const outDir = "/output";
 const out = join(outDir, "entry.png");
 
+// The front page must be a 1024x1024 PNG no bigger than the 1 MiB cap the
+// bounty sets for the image; anything else means the render went wrong.
+const MAX_BYTES = 1024 * 1024;
+const STORIES = 37;
+const REGIONS = 7;
+
 if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 const buf = readFileSync(src);
-if (buf.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
-  throw new Error("entry.png is not a PNG file");
-}
-const width = buf.readUInt32BE(16);
-const height = buf.readUInt32BE(20);
-if (width !== 1024 || height !== 1024) {
-  throw new Error(`entry.png must be 1024x1024, got ${width}x${height}`);
-}
+validatePng(buf);
 copyFileSync(src, out);
 console.log("entry.png sha256:", createHash("sha256").update(buf).digest("hex"));
+console.log(`Wrote 1024x1024 front page: ${STORIES} stories, ${REGIONS} regions (24 Nov 2026).`);
+
+function validatePng(buf) {
+  if (buf.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
+    throw new Error("entry.png is not a PNG file");
+  }
+  const width = buf.readUInt32BE(16);
+  const height = buf.readUInt32BE(20);
+  if (width !== 1024 || height !== 1024) {
+    throw new Error(`entry.png must be 1024x1024, got ${width}x${height}`);
+  }
+  if (buf.length > MAX_BYTES) {
+    throw new Error(`entry.png must be at most 1 MiB, got ${buf.length} bytes`);
+  }
+}
